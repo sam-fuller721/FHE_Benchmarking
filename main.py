@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+import timeit
 
 
 def test_fhe():
@@ -47,9 +48,47 @@ def test_fhe():
     print("     multiplication: decrypt(ctxt1 + ctxt2) =  ", resMul)
 
 
-def test_func():
+def run_mat_mul(n: int, m: int, scale: int):
+    a = np.random.random((n, m)) * scale
+    b = np.random.random((m, n)) * scale
+    res = a @ b
+
+
+def run_mat_mul_fhe(n: int, m: int, scale: int):
+    HE = Pyfhel()
+    ckks_params = {
+        "scheme": "CKKS",
+        "n": 2 ** 14,
+        "scale": 2 ** 30,
+        "qi_sizes": [60, 30, 30, 30, 60]
+    }
+    HE.contextGen(**ckks_params)
+    HE.keyGen()
+    HE.relinKeyGen()
+    HE.rotateKeyGen()
+
+
+    a_mat = np.random.random((n, m)) * scale
+    b_mat = (np.random.random((m, n)) * scale)
+    print(a_mat @ b_mat)
+
+    a_enc = [HE.encryptFrac(np.array(row)) for row in a_mat]
+    b_enc = [HE.encryptFrac(np.array(col)) for col in b_mat.T]
+    res = []
+    for a_row in a_enc:
+        sub_res = []
+        for b_col in b_enc:
+            sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
+        res.append(sub_res)
+
+    for rows in res:
+        for coef in rows:
+            print(HE.decryptFrac(coef)[0])
+
+
+def run_logistic_reg_fhe():
     data, target = datasets.load_iris(return_X_y=True)
-    data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=.5, random_state=1)
+    data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=.5, random_state=None)
     lin_reg = LogisticRegression()
     y_pred = lin_reg.fit(data_train, target_train).predict(data_test)
     # encrypt test data
@@ -74,60 +113,20 @@ def test_func():
 
     predictions = []
     for data in encrypted_test_data:
+        # assumes we know nothing about the data we're inferencing on, including the number of features
+        # could use n_elements=data_appended.shape[1] to dramatically improve performance
         encrypted_prediction = [
-            HE.scalar_prod_plain(data, encoded_coef, in_new_ctxt=True).to_bytes()
+            HE.scalar_prod_plain(data, encoded_coef, in_new_ctxt=True)
             for encoded_coef in encoded_coefs
         ]
         predictions.append(encrypted_prediction)
     c1_preds = []
     for prediction in predictions:
-        logits = [PyCtxt(bytestring=p, scheme="CKKS", pyfhel=HE) for p in prediction]
-        cl = np.argmax([HE.decryptFrac(logit)[0] for logit in logits])
+        cl = np.argmax([HE.decryptFrac(logit)[0] for logit in prediction])
         c1_preds.append(cl)
     print("Accuracy:", metrics.accuracy_score(target_test, y_pred))
 
-def run_linear_reg_test():
-    # load and preprocess iris dataset
-    iris = datasets.load_iris()
-    iris_df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
-    target_df = pd.DataFrame(data=iris.target, columns=["species"])
-    iris_df = (iris_df - iris_df.mean(0)) / (iris_df.std(0))
-
-    data, target = datasets.load_iris(return_X_y=True)
-    acc = 0
-    runs = 100
-    test_perc = .5
-    HE = Pyfhel()
-    ckks_params = {
-        "scheme": "CKKS",
-        "n": 2 ** 14,
-        "scale": 2 ** 30,
-        "qi_sizes": [60, 30, 30, 30, 60]
-    }
-    HE.contextGen(**ckks_params)
-    HE.keyGen()
-    HE.relinKeyGen()
-    HE.rotateKeyGen()
-    for seed in range(0, runs):
-        data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=test_perc, random_state=seed)
-        # encrypt test data
-        iris_np = np.append(data_test, np.ones((len(data_test), 1)), -1)  # append 1 for bias term
-        encrypted_iris = [HE.encryptFrac(row).to_bytes() for row in iris_np]
-        # create linear regressor
-        lin_reg = LogisticRegression()
-        # run encrypted data through linear regression model
-        y_pred = lin_reg.fit(data_train, target_train).predict(encrypted_iris)
-        # decrypt data
-        for pred in y_pred:
-            logits = [PyCtxt(bytestring=p, scheme="CKKS", pyfhel=HE) for p in pred]
-            cl = np.argmax([HE.decryptFrac(logit)[0] for logit in logits])
-            print(cl)
-
-        # calculate accuracy
-        #acc += metrics.accuracy_score(target_test, y_pred)
-    # save iris dataset
-    iris_df = pd.concat([iris_df, target_df], axis=1)
-
 
 if __name__ == "__main__":
-    test_func()
+    run_mat_mul_fhe(3, 3, 10)
+    #print(timeit.timeit("run_logistic_reg_fhe()", setup="from __main__ import run_logistic_reg_fhe", number=10))
