@@ -1,5 +1,6 @@
 FROM ubuntu:20.04 
 ENV DEBIAN_FRONTEND noninteractive
+WORKDIR "/app"
 
 # get minimum python version for pyfhel 
 RUN apt-get update -y 
