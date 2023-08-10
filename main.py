@@ -29,15 +29,18 @@ def run_mat_muli(n: int, m: int, scale: int) -> float:
 
 
 
-def run_mat_muli_fhe(n: int, m: int, scale: int) -> float:
+def run_mat_muli_fhe(n: int, m: int, scale: int, params=None) -> float:
     HE = Pyfhel()
-    bfv_params = {
-        'scheme': 'BFV',
-        'n': 2 ** 13,
-        't': 65537,
-        't_bits': 20,
-        'sec': 128,
-    }
+    if params is not None: 
+        bfv_params = params
+    else:
+        bfv_params = {
+            'scheme': 'BFV',
+            'n': 2 ** 13,
+            't': 65537,
+            't_bits': 20,
+            'sec': 128,
+        }
     HE.contextGen(**bfv_params)
     HE.keyGen()
     HE.rotateKeyGen()
@@ -59,14 +62,17 @@ def run_mat_muli_fhe(n: int, m: int, scale: int) -> float:
     return stop - start
 
 
-def run_mat_mulf_fhe(n: int, m: int, scale: int) -> float:
+def run_mat_mulf_fhe(n: int, m: int, scale: int, params=None) -> float:
     HE = Pyfhel()
-    ckks_params = {
-        "scheme": "CKKS",
-        "n": 2 ** 14,
-        "scale": 2 ** 30,
-        "qi_sizes": [60, 30, 30, 30, 60]
-    }
+    if params is not None: 
+        ckks_params = params
+    else:
+        ckks_params = {
+            "scheme": "CKKS",
+            "n": 2 ** 14,
+            "scale": 2 ** 30,
+            "qi_sizes": [60, 30, 30, 30, 60]
+        }
     HE.contextGen(**ckks_params)
     HE.keyGen()
     HE.relinKeyGen()
@@ -102,7 +108,7 @@ def run_logistic_reg() -> float:
     return stop - start
 
 
-def run_logistic_reg_fhe() -> float:
+def run_logistic_reg_fhe(params=None) -> float:
     data, target = datasets.load_iris(return_X_y=True)
 
     data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=.5, random_state=None)
@@ -114,12 +120,15 @@ def run_logistic_reg_fhe() -> float:
     lin_reg.fit(data_train, target_train)
     # encrypt test data
     HE = Pyfhel()
-    ckks_params = {
-        "scheme": "CKKS",
-        "n": 2 ** 14,
-        "scale": 2 ** 30,
-        "qi_sizes": [60, 30, 30, 30, 60]
-    }
+    if params is not None: 
+        ckks_params = params
+    else:
+        ckks_params = {
+            "scheme": "CKKS",
+            "n": 2 ** 14,
+            "scale": 2 ** 30,
+            "qi_sizes": [60, 30, 30, 30, 60]
+        }
     HE.contextGen(**ckks_params)
     HE.keyGen()
     HE.relinKeyGen()
@@ -157,7 +166,7 @@ def main(args):
         # iterate over list of tests in test file
         cnt = 0
         for test in test_desc["tests"]:
-            logger.write(f'Running Test: {cnt}\n')
+            logger.write(f'Running Test: {cnt}, {test["desc"]}\n')
             func = None 
             args = [] 
             if test["type"] == "log_reg": 
@@ -179,10 +188,14 @@ def main(args):
             else: 
                 print(f'{test["type"]} Not a supported test type')
                 continue 
-            # run the test
+
+            # if the file defines pyfhel params, use them 
+            if  "pyfhel_params" in test:
+                args += [test["pyfhel_params"]]
+             # run the test
             time = 0.0
             runs = test["runs"]
-            logger.write(f'Using Args: {args}')
+            logger.write(f'Using Args: {args} ')
             for _ in range(runs):
                 time += func(*args)
             logger.write(f'Average Execution Time (Runs {runs}) : {time / runs}\n')
