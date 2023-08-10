@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn import preprocessing
 from timeit import default_timer as timer
+import argparse 
+import json
 
 
 def run_mat_mulf(n: int, m: int, scale: int) -> float:
@@ -26,40 +28,8 @@ def run_mat_muli(n: int, m: int, scale: int) -> float:
     return stop - start
 
 
-def run_mat_muli_bgv(n: int, m: int, scale: int) -> float:
-    HE = Pyfhel()
-    bgv_params = {
-        'scheme': 'BGV',
-        'n': 2 ** 13,
-        't': 65537,
-        't_bits': 20,
-        'sec': 128,
-    }
-    HE.contextGen(**bgv_params)
-    HE.keyGen()
-    HE.rotateKeyGen()
-    HE.relinKeyGen()
-    a = np.random.randint(scale, size=(n, m))
-    b = np.random.randint(scale, size=(m, n))
-    a_enc = [HE.encryptBGV(np.array(row)) for row in a]
-    b_enc = [HE.encryptBGV(np.array(col)) for col in b.T]
-    start = timer()
-    res = []
-    for a_row in a_enc:
-        sub_res = []
-        for b_col in b_enc:
-            sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
-        res.append(sub_res)
 
-    for row in res:
-        for elem in row:
-            print(HE.decryptBGV(elem)[0])
-    print(a @ b)
-    stop = timer()
-    return stop - start
-
-
-def run_mat_muli_bfv(n: int, m: int, scale: int) -> float:
+def run_mat_muli_fhe(n: int, m: int, scale: int) -> float:
     HE = Pyfhel()
     bfv_params = {
         'scheme': 'BFV',
@@ -84,16 +54,12 @@ def run_mat_muli_bfv(n: int, m: int, scale: int) -> float:
             sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
         res.append(sub_res)
 
-    for row in res:
-        for elem in row:
-            print(HE.decryptInt(elem)[0])
-    print(a @ b)
     stop = timer()
 
     return stop - start
 
 
-def run_mat_mulf_ckks(n: int, m: int, scale: int) -> float:
+def run_mat_mulf_fhe(n: int, m: int, scale: int) -> float:
     HE = Pyfhel()
     ckks_params = {
         "scheme": "CKKS",
@@ -185,25 +151,52 @@ def run_logistic_reg_fhe() -> float:
     return stop - start
 
 
+def main(args):
+    test_desc = json.load(open(args.file_input))    
+    with open(test_desc["out_file"], "w") as logger:
+        # iterate over list of tests in test file
+        cnt = 0
+        for test in test_desc["tests"]:
+            logger.write(f'Running Test: {cnt}\n')
+            func = None 
+            args = [] 
+            if test["type"] == "log_reg": 
+                func = run_logistic_reg_fhe if test["encryption"] == "FHE" else run_logistic_reg 
+
+            elif test["type"] == "mat_mul": 
+                if test["encryption"] == "FHE" and test["data_type"] == "float": 
+                    func = run_mat_mulf_fhe 
+                elif test["encryption"] == "FHE" and test["data_type"] == "int":
+                    func = run_mat_muli_fhe 
+                elif test["encryption"] == "NONE" and test["data_type"] == "float":
+                    func = run_mat_mulf
+                elif test["encryption"] == "NONE" and test["data_type"] == "int": 
+                    func = run_mat_muli 
+                else: 
+                    print('Invalid Test Case')
+                    continue
+                args = [test["mat_size"][0], test["mat_size"][1], test["scale"]]
+            else: 
+                print(f'{test["type"]} Not a supported test type')
+                continue 
+            # run the test
+            time = 0.0
+            runs = test["runs"]
+            logger.write(f'Using Args: {args}')
+            for _ in range(runs):
+                time += func(*args)
+            logger.write(f'Average Execution Time (Runs {runs}) : {time / runs}\n')
+            cnt += 1
+
+
 if __name__ == "__main__":
-    runs = 10
-    time = 0.0
-    for _ in range(0, runs):
-        time += run_logistic_reg_fhe()
-    print(f'FHE Logistic Regression Average Execution Time ({runs} runs): {time / runs}')
-
-    time = 0.0
-    for _ in range(0, runs):
-        time += run_logistic_reg()
-    print(f'Standard Logistic Regression Average Execution Time ({runs} runs): {time / runs}')
-
-    runs = 100
-    time = 0.0
-    for _ in range(0, runs):
-        time += run_mat_mulf_ckks(5, 5, 10)
-    print(f'FHE Matrix Multiplication (5x5) Average Execution Time ({runs} runs): {time / runs}')
-
-    time = 0.0
-    for _ in range(0, runs):
-        time += run_mat_mulf(5, 5, 10)
-    print(f'Standard Matrix Multiplication (5x5) Average Execution Time ({runs} runs): {time / runs}')
+    parser = argparse.ArgumentParser(description='Test Bench Tool for comparing FHE, AES, and Non-encrypted operations', fromfile_prefix_chars='@')
+    parser.add_argument('--file_input', '-f', help='Test Description File: takes a string to a test description file, expects a JSON file describing tests to be run')
+    parser.add_argument('--test_type', '-t', help='Test Type: takes a string denoting the type of test to perform (mat_mul, mat_scale, log_reg, add, sub, mult, div)')
+    parser.add_argument('--encryption', '-e', help='Encryption Type: takes a string denoting the type of encryption to use (FHE, AES, NONE)')
+    parser.add_argument('--data_type', '-d', help='Data Type: takes a string denoting the type of data used during the test (float, int)')
+    parser.add_argument('--runs', '-r', help='Test Runs: takes an integer number of iterations to run the test', default=10)
+    parser.add_argument('--scale', '-s', help='Data Scale: Scale factor applied to randomly generated data, not applicable to log_reg test', default=1)
+    parser.add_argument('--mat_size', '-m', help='Matrix Size: takes an integer tuple (n, m) denoting the size of the matrix to be tested with. Only applicable to mat_mul and mat_scale tests', default=(5, 5))
+    parser.add_argument('--out_file', '-o', help='Outfile Name: takes a string denoting the name of the outfile to store test results in', default='results.txt')
+    main(parser.parse_args())
