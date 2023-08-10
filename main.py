@@ -8,7 +8,7 @@ from sklearn import preprocessing
 from timeit import default_timer as timer
 
 
-def run_mat_mul(n: int, m: int, scale: int) -> float:
+def run_mat_mulf(n: int, m: int, scale: int) -> float:
     a = np.random.random((n, m)) * scale
     b = np.random.random((m, n)) * scale
     start = timer()
@@ -17,7 +17,83 @@ def run_mat_mul(n: int, m: int, scale: int) -> float:
     return stop - start
 
 
-def run_mat_mul_fhe(n: int, m: int, scale: int) -> float:
+def run_mat_muli(n: int, m: int, scale: int) -> float:
+    a = np.random.randint(scale, size=(n, m))
+    b = np.random.randint(scale, size=(m, n))
+    start = timer()
+    res = a @ b
+    stop = timer()
+    return stop - start
+
+
+def run_mat_muli_bgv(n: int, m: int, scale: int) -> float:
+    HE = Pyfhel()
+    bgv_params = {
+        'scheme': 'BGV',
+        'n': 2 ** 13,
+        't': 65537,
+        't_bits': 20,
+        'sec': 128,
+    }
+    HE.contextGen(**bgv_params)
+    HE.keyGen()
+    HE.rotateKeyGen()
+    HE.relinKeyGen()
+    a = np.random.randint(scale, size=(n, m))
+    b = np.random.randint(scale, size=(m, n))
+    a_enc = [HE.encryptBGV(np.array(row)) for row in a]
+    b_enc = [HE.encryptBGV(np.array(col)) for col in b.T]
+    start = timer()
+    res = []
+    for a_row in a_enc:
+        sub_res = []
+        for b_col in b_enc:
+            sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
+        res.append(sub_res)
+
+    for row in res:
+        for elem in row:
+            print(HE.decryptBGV(elem)[0])
+    print(a @ b)
+    stop = timer()
+    return stop - start
+
+
+def run_mat_muli_bfv(n: int, m: int, scale: int) -> float:
+    HE = Pyfhel()
+    bfv_params = {
+        'scheme': 'BFV',
+        'n': 2 ** 13,
+        't': 65537,
+        't_bits': 20,
+        'sec': 128,
+    }
+    HE.contextGen(**bfv_params)
+    HE.keyGen()
+    HE.rotateKeyGen()
+    HE.relinKeyGen()
+    a = np.random.randint(scale, size=(n, m))
+    b = np.random.randint(scale, size=(m, n))
+    a_enc = [HE.encryptInt(np.array(row)) for row in a]
+    b_enc = [HE.encryptInt(np.array(col)) for col in b.T]
+    start = timer()
+    res = []
+    for a_row in a_enc:
+        sub_res = []
+        for b_col in b_enc:
+            sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
+        res.append(sub_res)
+
+    for row in res:
+        for elem in row:
+            print(HE.decryptInt(elem)[0])
+    print(a @ b)
+    stop = timer()
+
+    return stop - start
+
+
+def run_mat_mulf_ckks(n: int, m: int, scale: int) -> float:
     HE = Pyfhel()
     ckks_params = {
         "scheme": "CKKS",
@@ -124,10 +200,10 @@ if __name__ == "__main__":
     runs = 100
     time = 0.0
     for _ in range(0, runs):
-        time += run_mat_mul_fhe(5, 5, 10)
+        time += run_mat_mulf_ckks(5, 5, 10)
     print(f'FHE Matrix Multiplication (5x5) Average Execution Time ({runs} runs): {time / runs}')
 
     time = 0.0
     for _ in range(0, runs):
-        time += run_mat_mul(5, 5, 10)
+        time += run_mat_mulf(5, 5, 10)
     print(f'Standard Matrix Multiplication (5x5) Average Execution Time ({runs} runs): {time / runs}')
