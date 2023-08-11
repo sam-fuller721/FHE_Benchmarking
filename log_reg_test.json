@@ -1,0 +1,19 @@
+{
+    "out_file" : "test_output.txt",
+    "tests" : [
+        {
+            "type" : "log_reg_float_FHE",
+            "pyfhel_params": {
+                "scheme": "CKKS",
+                "n": 16384,
+                "scale": 1073741824,
+                "qi_sizes": [60, 30, 30, 30, 60]
+            },
+            "runs" : 10
+        }, 
+        {
+            "type" : "log_reg_float_NONE",
+            "runs" : 10
+        }
+    ]
+}
