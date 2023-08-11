@@ -18,3 +18,4 @@ RUN python3.9 -m pip install pyfhel
 # install libraries for logistic regression example 
 RUN python3.9 -m pip install scikit-learn
 RUN python3.9 -m pip install pandas
+RUN python3.9 -m pip install tqdm
