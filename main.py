@@ -106,12 +106,15 @@ def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) ->
 def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
-        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results", "Accuracy"])
     run_results = []
 
     a = np.random.random((n, m)) * scale
     b = np.random.random((m, n)) * scale
     
+    # log size of both matrices
+    run_results += [a.nbytes + b.nbytes]
+
     start = timer()
     secretKey = get_secret_key()
     
@@ -125,17 +128,21 @@ def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     b_decrypt = np.frombuffer(decrypt_AES_GCM(b_encrypt, secretKey))
     b_decrypt.resize((b.shape))
 
-    # log size of both matrices
-    run_results += [a_decrypt.nbytes + b_decrypt.nbytes]
     res = a_decrypt @ b_decrypt
     stop = timer()
 
     # log the processing time 
     run_results += [stop - start]
+
     # log the size of the resulting matrix 
-    run_results += [res.nbytes]
+    run_results += [get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt) + a_decrypt.nbytes + b_decrypt.nbytes]
+
+    # log the percent error from the gold standard numpy matrix multiply 
+    run_results += [percent_error_matrix(a @ b, res)]
+
     # append results of the current run to the results dataframe
     results_dataframe.loc[len(results_dataframe.index)] = run_results
+
     return results_dataframe
 
 
@@ -143,14 +150,17 @@ def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     AES Matrix Multiplication - Integer
 '''
 def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
-    # check if the results dataframe has been initialized yet 
+        # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
-        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results", "Accuracy"])
     run_results = []
 
     a = np.random.randint((n, m)) * scale
     b = np.random.randint((m, n)) * scale
     
+    # log size of both matrices
+    run_results += [a.nbytes + b.nbytes]
+
     start = timer()
     secretKey = get_secret_key()
     
@@ -164,17 +174,21 @@ def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     b_decrypt = np.frombuffer(decrypt_AES_GCM(b_encrypt, secretKey), dtype=int)
     b_decrypt.resize((b.shape))
 
-    # log size of both matrices
-    run_results += [a_decrypt.nbytes + b_decrypt.nbytes]
     res = a_decrypt @ b_decrypt
     stop = timer()
-    
+
     # log the processing time 
     run_results += [stop - start]
+
     # log the size of the resulting matrix 
-    run_results += [res.nbytes]
+    run_results += [get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt) + a_decrypt.nbytes + b_decrypt.nbytes]
+
+    # log the percent error from the gold standard numpy matrix multiply 
+    run_results += [percent_error_matrix(a @ b, res)]
+
     # append results of the current run to the results dataframe
     results_dataframe.loc[len(results_dataframe.index)] = run_results
+
     return results_dataframe
 
 
