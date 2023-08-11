@@ -10,35 +10,74 @@ from timeit import default_timer as timer
 import argparse 
 import json
 import sys
+import os
 from tqdm import tqdm 
 
 def get_encrypted_size(encrypted_data) -> int:
     sum = 0
     for e in encrypted_data: 
         sum += e.__sizeof__()
+    return sum  
+
+def get_encrypted_size_mat(encrypted_data) -> int: 
+    sum = 0
+    for row in encrypted_data: 
+        sum += get_encrypted_size(row) 
     return sum
+
+def percent_error_matrix(mat_ref, mat_calculated) -> float: 
+    mat_diff = mat_ref - mat_calculated 
+    return np.average(mat_diff)
 
 
 def run_mat_mulf(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+    run_results = []
     a = np.random.random((n, m)) * scale
     b = np.random.random((m, n)) * scale
+    # log size of both matrices
+    run_results += [a.nbytes + b.nbytes]
     start = timer()
     res = a @ b
     stop = timer()
+    # log the processing time 
+    run_results += [stop - start]
+    # log the size of the resulting matrix 
+    run_results += [res.nbytes]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
     return results_dataframe
 
 
 def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+    run_results = []
     a = np.random.randint(scale, size=(n, m))
     b = np.random.randint(scale, size=(m, n))
+    # log size of both matrices
+    run_results += [a.nbytes + b.nbytes]
     start = timer()
     res = a @ b
     stop = timer()
+    # log the processing time 
+    run_results += [stop - start]
+    # log the size of the resulting matrix 
+    run_results += [res.nbytes]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
     return results_dataframe
 
 
 
 def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Encryption_Time_Data", "Encryption_Size_Data", "Processing_Time", "Encryption_Size_Results", "Decryption_Results_Time", "Accuracy"])
+    run_results = []
     HE = Pyfhel()
     if params is not None: 
         bfv_params = params
@@ -50,14 +89,21 @@ def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
             't_bits': 20,
             'sec': 128,
         }
+    start = timer()
     HE.contextGen(**bfv_params)
     HE.keyGen()
     HE.rotateKeyGen()
     HE.relinKeyGen()
-    a = np.random.randint(scale, size=(n, m))
-    b = np.random.randint(scale, size=(m, n))
-    a_enc = [HE.encryptInt(np.array(row)) for row in a]
-    b_enc = [HE.encryptInt(np.array(col)) for col in b.T]
+    a_mat = np.random.randint(scale, size=(n, m))
+    b_mat = np.random.randint(scale, size=(m, n))
+    a_enc = [HE.encryptInt(np.array(row)) for row in a_mat]
+    b_enc = [HE.encryptInt(np.array(col)) for col in b_mat.T] 
+    stop = timer()
+    # log time to encrypt both matrices 
+    run_results += [stop - start]
+    # log encrypted size of both matrices 
+    run_results += [get_encrypted_size(a_enc) + get_encrypted_size(b_enc)]
+
     start = timer()
     res = []
     for a_row in a_enc:
@@ -65,13 +111,36 @@ def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
         for b_col in b_enc:
             sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
         res.append(sub_res)
-
     stop = timer()
-
+    # log processing time 
+    run_results += [stop - start]
+    # log size of resulting matrix 
+    run_results += [get_encrypted_size_mat(res)]
+    # decrypt matrix 
+    res_decrypt = []
+    start = timer()
+    for row in res:
+        temp = []
+        for elem in row: 
+            temp.append(HE.decryptInt(elem)[0])
+        res_decrypt.append(temp)
+    stop = timer()
+    res_np = np.array(res_decrypt)
+    # log time to decrypt results 
+    run_results += [stop - start]
+    # log the percent error from the gold standard numpy matrix multiply 
+    run_results += [percent_error_matrix(a_mat @ b_mat, res_np)]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
     return results_dataframe
 
 
 def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Encryption_Time_Data", "Encryption_Size_Data", "Processing_Time", "Encryption_Size_Results", "Decryption_Results_Time", "Accuracy"])
+    run_results = []
+
     HE = Pyfhel()
     if params is not None: 
         ckks_params = params
@@ -82,6 +151,8 @@ def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
             "scale": 2 ** 30,
             "qi_sizes": [60, 30, 30, 30, 60]
         }
+
+    start = timer()
     HE.contextGen(**ckks_params)
     HE.keyGen()
     HE.relinKeyGen()
@@ -90,6 +161,12 @@ def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     b_mat = (np.random.random((m, n)) * scale)
     a_enc = [HE.encryptFrac(np.array(row)) for row in a_mat]
     b_enc = [HE.encryptFrac(np.array(col)) for col in b_mat.T]
+    stop = timer() 
+    # log time to encrypt both matrices 
+    run_results += [stop - start]
+    # log encrypted size of both matrices 
+    run_results += [get_encrypted_size(a_enc) + get_encrypted_size(b_enc)]
+
     start = timer()
     res = []
     for a_row in a_enc:
@@ -98,6 +175,26 @@ def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
             sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
         res.append(sub_res)
     stop = timer()
+    # log processing time 
+    run_results += [stop - start]
+    # log size of resulting matrix 
+    run_results += [get_encrypted_size_mat(res)]
+    # decrypt the matrix
+    res_decrypt = []
+    start = timer()
+    for row in res:
+        temp = []
+        for elem in row: 
+            temp.append(HE.decryptFrac(elem)[0])
+        res_decrypt.append(temp)
+    stop = timer()
+    res_np = np.array(res_decrypt)
+    # log time to decrypt results 
+    run_results += [stop - start]
+    # log the percent error from the gold standard numpy matrix multiply 
+    run_results += [percent_error_matrix(a_mat @ b_mat, res_np)]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
     return results_dataframe
 
 
@@ -219,6 +316,8 @@ def run_logistic_reg_fhe(results_dataframe: pd.DataFrame, params=None) -> pd.Dat
 
 
 def main(args):
+    if not os.path.exists("test_results"):
+        os.mkdir("test_results")
     # create dict for storing a mapping of test types to test functions 
     test_functions  = {
         "log_reg_float_FHE" : run_logistic_reg_fhe, 
@@ -230,9 +329,10 @@ def main(args):
     }
     # parse the test file JSON 
     if args.file_input:
-        test_desc = json.load(open(args.file_input))    
+        test_desc = json.load(open(args.file_input)) 
+        test_file_path = "test_results/"
         # iterate over list of tests in test file
-        with open(test_desc["out_file"], "w") as logger:    # log outputs to the specified out file
+        with open(test_file_path + test_desc["out_file"], "w") as logger:    # log outputs to the specified out file
             cnt = 0
             for test in test_desc["tests"]:
                 logger.write(f'Running Test: {cnt}, {test["type"]}\n')
@@ -251,12 +351,12 @@ def main(args):
                 # run the test
                 time = 0.0
                 runs = test["runs"]
-                logger.write(f'Using Args: {args} ')
-                for _ in tqdm(range(runs), desc=f'Running Test {cnt}: {test["type"]}'):
+                logger.write(f'Using Args: {args[1:]} ')
+                for _ in tqdm(range(runs), desc=f'Running Test {cnt}: {test["type"]}', ascii=True):
                     args[0] = func(*args)
                 logger.write(f'Finished Running Test: {cnt}\n')
                 # log specifc results in a csv for further analysis 
-                args[0].to_csv(f'{test["type"]}_results.csv')
+                args[0].to_csv(f'{test_file_path}/{test["type"]}_results.csv')
                 cnt += 1 
     else:
         print("Only file input is supported")
