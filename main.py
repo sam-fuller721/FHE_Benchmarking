@@ -12,6 +12,9 @@ import json
 import sys
 import os
 from tqdm import tqdm 
+from Crypto.Cipher import AES
+from Crypto import Random
+
 
 def get_encrypted_size(encrypted_data) -> int:
     sum = 0
@@ -29,7 +32,29 @@ def percent_error_matrix(mat_ref, mat_calculated) -> float:
     mat_diff = mat_ref - mat_calculated 
     return np.average(mat_diff)
 
+'''
+    Helper functions for AES256 Encryption, GCM mode
+    Source: https://cryptobook.nakov.com/symmetric-key-ciphers/aes-encrypt-decrypt-examplesfrom Crypto.Cipher import AES
 
+'''
+def get_secret_key():
+    return Random.get_random_bytes(32) # 256-bit random encryption key
+
+def encrypt_AES_GCM(msg, secretKey):
+    aesCipher = AES.new(secretKey, AES.MODE_GCM)
+    ciphertext, authTag = aesCipher.encrypt_and_digest(msg)
+    return (ciphertext, aesCipher.nonce, authTag)
+
+def decrypt_AES_GCM(encryptedMsg, secretKey):
+    (ciphertext, nonce, authTag) = encryptedMsg
+    aesCipher = AES.new(secretKey, AES.MODE_GCM, nonce)
+    plaintext = aesCipher.decrypt_and_verify(ciphertext, authTag)
+    return plaintext
+
+
+'''
+    Standard Matrix Multiplication - Float
+'''
 def run_mat_mulf(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
@@ -51,6 +76,9 @@ def run_mat_mulf(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) ->
     return results_dataframe
 
 
+'''
+    Standard Matrix Multiplication - Integer
+'''
 def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
@@ -72,7 +100,87 @@ def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) ->
     return results_dataframe
 
 
+'''
+    AES Matrix Multiplication - Float
+'''
+def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+    run_results = []
 
+    a = np.random.random((n, m)) * scale
+    b = np.random.random((m, n)) * scale
+    
+    start = timer()
+    secretKey = get_secret_key()
+    
+    # encrypting matrices, a and b
+    a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
+    b_encrypt = encrypt_AES_GCM(b.tobytes(), secretKey)
+    
+    # decrypting encrypted matrices
+    a_decrypt = np.frombuffer(decrypt_AES_GCM(a_encrypt, secretKey))
+    a_decrypt.resize((a.shape)) 
+    b_decrypt = np.frombuffer(decrypt_AES_GCM(b_encrypt, secretKey))
+    b_decrypt.resize((b.shape))
+
+    # log size of both matrices
+    run_results += [a_decrypt.nbytes + b_decrypt.nbytes]
+    res = a_decrypt @ b_decrypt
+    stop = timer()
+
+    # log the processing time 
+    run_results += [stop - start]
+    # log the size of the resulting matrix 
+    run_results += [res.nbytes]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+'''
+    AES Matrix Multiplication - Integer
+'''
+def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+    run_results = []
+
+    a = np.random.randint((n, m)) * scale
+    b = np.random.randint((m, n)) * scale
+    
+    start = timer()
+    secretKey = get_secret_key()
+    
+    # encrypting matrices, a and b
+    a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
+    b_encrypt = encrypt_AES_GCM(b.tobytes(), secretKey)
+    
+    # decrypting encrypted matrices
+    a_decrypt = np.frombuffer(decrypt_AES_GCM(a_encrypt, secretKey), dtype=int)
+    a_decrypt.resize((a.shape)) 
+    b_decrypt = np.frombuffer(decrypt_AES_GCM(b_encrypt, secretKey), dtype=int)
+    b_decrypt.resize((b.shape))
+
+    # log size of both matrices
+    run_results += [a_decrypt.nbytes + b_decrypt.nbytes]
+    res = a_decrypt @ b_decrypt
+    stop = timer()
+    
+    # log the processing time 
+    run_results += [stop - start]
+    # log the size of the resulting matrix 
+    run_results += [res.nbytes]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+'''
+    FHE Matrix Multiplication - Integer
+'''
 def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int, params=None) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
@@ -135,6 +243,9 @@ def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     return results_dataframe
 
 
+'''
+    FHE Matrix Multiplication - Float
+'''
 def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int, params=None) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
@@ -198,6 +309,9 @@ def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     return results_dataframe
 
 
+'''
+    Standard Logisic Regression
+'''
 def run_logistic_reg(results_dataframe: pd.DataFrame) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
@@ -231,6 +345,68 @@ def run_logistic_reg(results_dataframe: pd.DataFrame) -> pd.DataFrame:
     return results_dataframe
 
 
+'''
+    AES Logisic Regression
+'''
+def run_logistic_reg_aes(results_dataframe: pd.DataFrame) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Size_Coefficients", "Inference_Time", "Prediction_Size", "Accuracy"])
+    run_results = []
+
+    data, target = datasets.load_iris(return_X_y=True)
+    data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=.5, random_state=None)
+    
+    # log size of unencrypted test data 
+    run_results += [data_test.nbytes]
+    
+    # preprocess data
+    scaler = preprocessing.StandardScaler().fit(data_train)
+    data_train = scaler.transform(data_train)
+    data_test = scaler.transform(data_test)
+    lin_reg = LogisticRegression()
+    secretKey = get_secret_key()
+
+    # run inference
+    start = timer()
+    
+    # encrypt test data, train data, target train
+    encrypted_test_data = encrypt_AES_GCM(data_test.tobytes(), secretKey)
+    decrypted_test_data = np.frombuffer(decrypt_AES_GCM(encrypted_test_data, secretKey))
+    decrypted_test_data.resize((data_test.shape)) 
+
+    encrypted_train_data = encrypt_AES_GCM(data_train.tobytes(), secretKey)
+    decrypted_train_data = np.frombuffer(decrypt_AES_GCM(encrypted_train_data, secretKey))
+    decrypted_train_data.resize((data_train.shape))
+
+    encrypted_target_train = encrypt_AES_GCM(target_train.tobytes(), secretKey)
+    decrypted_target_train = np.frombuffer(decrypt_AES_GCM(encrypted_target_train, secretKey), dtype=int)
+    decrypted_target_train.resize((target_train.shape))    
+
+    lin_reg.fit(decrypted_train_data, decrypted_target_train)
+
+    # log the size of the trained coefficients 
+    run_results += [lin_reg.coef_.nbytes]
+
+    y_pred = lin_reg.predict(decrypted_test_data)
+    stop = timer()
+
+    # log the inferencing time 
+    run_results += [stop - start]
+
+    # log the prediction size 
+    run_results += [y_pred.nbytes]
+
+    # log the accuracy 
+    run_results += [metrics.accuracy_score(target_test, y_pred)]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+
+    return results_dataframe
+
+'''
+    FHE Logisic Regression
+'''
 def run_logistic_reg_fhe(results_dataframe: pd.DataFrame, params=None) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet 
     if results_dataframe.empty: 
@@ -321,9 +497,12 @@ def main(args):
     # create dict for storing a mapping of test types to test functions 
     test_functions  = {
         "log_reg_float_FHE" : run_logistic_reg_fhe, 
+        "log_reg_float_AES" : run_logistic_reg_aes, 
         "log_reg_float_NONE" : run_logistic_reg,
         "mat_mul_float_FHE" : run_mat_mulf_fhe, 
-        "mat_mul_int_FHE" : run_mat_muli_fhe, 
+        "mat_mul_int_FHE" : run_mat_muli_fhe,
+        "mat_mul_float_AES" : run_mat_mulf_aes, 
+        "mat_mul_int_AES" : run_mat_muli_aes, 
         "mat_mul_float_NONE" : run_mat_mulf, 
         "mat_mul_int_NONE" :  run_mat_muli
     }

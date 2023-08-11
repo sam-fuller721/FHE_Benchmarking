@@ -15,7 +15,12 @@ RUN apt-get install -y git
 
 # install pyfhel 
 RUN python3.9 -m pip install pyfhel 
+
+# install pycryptodome
+RUN python3.9 -m pip install pycryptodome
+
 # install libraries for logistic regression example 
 RUN python3.9 -m pip install scikit-learn
 RUN python3.9 -m pip install pandas
 RUN python3.9 -m pip install tqdm
+
