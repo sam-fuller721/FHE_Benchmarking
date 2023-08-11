@@ -12,6 +12,10 @@
             "runs" : 10
         }, 
         {
+            "type" : "log_reg_float_AES",
+            "runs" : 10
+        },
+        {
             "type" : "log_reg_float_NONE",
             "runs" : 10
         }
