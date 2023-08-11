@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from Pyfhel import Pyfhel, PyCtxt
 from sklearn import datasets
 from sklearn import metrics
@@ -8,28 +9,36 @@ from sklearn import preprocessing
 from timeit import default_timer as timer
 import argparse 
 import json
+import sys
+from tqdm import tqdm 
+
+def get_encrypted_size(encrypted_data) -> int:
+    sum = 0
+    for e in encrypted_data: 
+        sum += e.__sizeof__()
+    return sum
 
 
-def run_mat_mulf(n: int, m: int, scale: int) -> float:
+def run_mat_mulf(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
     a = np.random.random((n, m)) * scale
     b = np.random.random((m, n)) * scale
     start = timer()
     res = a @ b
     stop = timer()
-    return stop - start
+    return results_dataframe
 
 
-def run_mat_muli(n: int, m: int, scale: int) -> float:
+def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
     a = np.random.randint(scale, size=(n, m))
     b = np.random.randint(scale, size=(m, n))
     start = timer()
     res = a @ b
     stop = timer()
-    return stop - start
+    return results_dataframe
 
 
 
-def run_mat_muli_fhe(n: int, m: int, scale: int, params=None) -> float:
+def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int, params=None) -> pd.DataFrame:
     HE = Pyfhel()
     if params is not None: 
         bfv_params = params
@@ -59,10 +68,10 @@ def run_mat_muli_fhe(n: int, m: int, scale: int, params=None) -> float:
 
     stop = timer()
 
-    return stop - start
+    return results_dataframe
 
 
-def run_mat_mulf_fhe(n: int, m: int, scale: int, params=None) -> float:
+def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int, params=None) -> pd.DataFrame:
     HE = Pyfhel()
     if params is not None: 
         ckks_params = params
@@ -89,28 +98,51 @@ def run_mat_mulf_fhe(n: int, m: int, scale: int, params=None) -> float:
             sub_res.append(HE.scalar_prod(a_row, b_col, in_new_ctxt=True))
         res.append(sub_res)
     stop = timer()
-    return stop - start
+    return results_dataframe
 
 
-def run_logistic_reg() -> float:
+def run_logistic_reg(results_dataframe: pd.DataFrame) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Size_Coefficients", "Inference_Time", "Prediction_Size", "Accuracy"])
+    run_results = []
+
     data, target = datasets.load_iris(return_X_y=True)
     data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=.5, random_state=None)
+    # log size of unencrypted test data 
+    run_results += [data_test.nbytes]
     # preprocess data
     scaler = preprocessing.StandardScaler().fit(data_train)
     data_train = scaler.transform(data_train)
     data_test = scaler.transform(data_test)
     lin_reg = LogisticRegression()
+    lin_reg.fit(data_train, target_train)
+    # log the size of the trained coefficients 
+    run_results += [lin_reg.coef_.nbytes]
     # run inference
     start = timer()
-    y_pred = lin_reg.fit(data_train, target_train).predict(data_test)
+    y_pred = lin_reg.predict(data_test)
     stop = timer()
-    print("Accuracy:", metrics.accuracy_score(target_test, y_pred))
-    return stop - start
+    # log the inferencing time 
+    run_results += [stop - start]
+    # log the prediction size 
+    run_results += [y_pred.nbytes]
+    # log the accuracy 
+    run_results += [metrics.accuracy_score(target_test, y_pred)]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
 
 
-def run_logistic_reg_fhe(params=None) -> float:
+def run_logistic_reg_fhe(results_dataframe: pd.DataFrame, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Encryption_Time_Data", "Encryption_Size_Data", "Encode_Time_Coefficients", "Encode_Size_Coefficients", "Inference_Time", "Prediction_Size", "Decryption_Prediciton_Time", "Accuracy"])
+    run_results = []
+
+    # load the test iris dataset 
     data, target = datasets.load_iris(return_X_y=True)
-
+    # split into train and test partitions 
     data_train, data_test, target_train, target_test = train_test_split(data, target, test_size=.5, random_state=None)
     # preprocess data
     scaler = preprocessing.StandardScaler().fit(data_train)
@@ -118,6 +150,7 @@ def run_logistic_reg_fhe(params=None) -> float:
     data_test = scaler.transform(data_test)
     lin_reg = LogisticRegression()
     lin_reg.fit(data_train, target_train)
+
     # encrypt test data
     HE = Pyfhel()
     if params is not None: 
@@ -129,20 +162,33 @@ def run_logistic_reg_fhe(params=None) -> float:
             "scale": 2 ** 30,
             "qi_sizes": [60, 30, 30, 30, 60]
         }
+    # time encryption process
+    start = timer()
     HE.contextGen(**ckks_params)
     HE.keyGen()
     HE.relinKeyGen()
     HE.rotateKeyGen()
     data_appended = np.append(data_test, np.ones((len(data_test), 1)), -1)
     encrypted_test_data = [HE.encryptFrac(row) for row in data_appended]
+    stop = timer()
+    # log time to encrypt data 
+    run_results += [stop - start]
+    # log size of encrypted data 
+    run_results += [get_encrypted_size(encrypted_test_data)]
 
-    # encrypt coefficients from trained model, start of inferencing process
+    # encode coefficients from trained model, start of inferencing process
     start = timer()
     coefs = []
     for i in range(0, 3):
         coefs.append(np.append(lin_reg.coef_[i], lin_reg.intercept_[i]))
     encoded_coefs = [HE.encodeFrac(coef) for coef in coefs]
+    stop = timer() 
+    # log time to encode coefficients 
+    run_results += [stop - start] 
+    # log size of encoded coefficients 
+    run_results += [get_encrypted_size(encoded_coefs)]
     # run inference
+    start = timer()
     predictions = []
     for data in encrypted_test_data:
         encrypted_prediction = [
@@ -151,55 +197,69 @@ def run_logistic_reg_fhe(params=None) -> float:
         ]
         predictions.append(encrypted_prediction)
     stop = timer()
+    # log time to run inferencing 
+    run_results += [stop - start]
+    # log prediction size 
+    run_results += [get_encrypted_size(predictions)]
+
     # decrypt predictions and check accuracy
+    start = timer()
     c1_preds = []
     for prediction in predictions:
         cl = np.argmax([HE.decryptFrac(logit)[0] for logit in prediction])
-        c1_preds.append(cl)
-    print("Accuracy:", metrics.accuracy_score(target_test, c1_preds))
-    return stop - start
+        c1_preds.append(cl) 
+    stop = timer()
+    # log prediction decryption time 
+    run_results += [stop - start]
+    # log accuracy 
+    run_results += [metrics.accuracy_score(target_test, c1_preds)]
+    # append results of the current run to the results dataframe
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
 
 
 def main(args):
-    test_desc = json.load(open(args.file_input))    
-    with open(test_desc["out_file"], "w") as logger:
+    # create dict for storing a mapping of test types to test functions 
+    test_functions  = {
+        "log_reg_float_FHE" : run_logistic_reg_fhe, 
+        "log_reg_float_NONE" : run_logistic_reg,
+        "mat_mul_float_FHE" : run_mat_mulf_fhe, 
+        "mat_mul_int_FHE" : run_mat_muli_fhe, 
+        "mat_mul_float_NONE" : run_mat_mulf, 
+        "mat_mul_int_NONE" :  run_mat_muli
+    }
+    # parse the test file JSON 
+    if args.file_input:
+        test_desc = json.load(open(args.file_input))    
         # iterate over list of tests in test file
-        cnt = 0
-        for test in test_desc["tests"]:
-            logger.write(f'Running Test: {cnt}, {test["desc"]}\n')
-            func = None 
-            args = [] 
-            if test["type"] == "log_reg": 
-                func = run_logistic_reg_fhe if test["encryption"] == "FHE" else run_logistic_reg 
-
-            elif test["type"] == "mat_mul": 
-                if test["encryption"] == "FHE" and test["data_type"] == "float": 
-                    func = run_mat_mulf_fhe 
-                elif test["encryption"] == "FHE" and test["data_type"] == "int":
-                    func = run_mat_muli_fhe 
-                elif test["encryption"] == "NONE" and test["data_type"] == "float":
-                    func = run_mat_mulf
-                elif test["encryption"] == "NONE" and test["data_type"] == "int": 
-                    func = run_mat_muli 
-                else: 
-                    print('Invalid Test Case')
-                    continue
-                args = [test["mat_size"][0], test["mat_size"][1], test["scale"]]
-            else: 
-                print(f'{test["type"]} Not a supported test type')
-                continue 
-
-            # if the file defines pyfhel params, use them 
-            if  "pyfhel_params" in test:
-                args += [test["pyfhel_params"]]
-             # run the test
-            time = 0.0
-            runs = test["runs"]
-            logger.write(f'Using Args: {args} ')
-            for _ in range(runs):
-                time += func(*args)
-            logger.write(f'Average Execution Time (Runs {runs}) : {time / runs}\n')
-            cnt += 1
+        with open(test_desc["out_file"], "w") as logger:    # log outputs to the specified out file
+            cnt = 0
+            for test in test_desc["tests"]:
+                logger.write(f'Running Test: {cnt}, {test["type"]}\n')
+                # look-up the correct test function according to test type 
+                func =  test_functions[test["type"]]
+                # populate the test function arguments 
+                args = [pd.DataFrame()]     # start with an empty dataframe to store test results 
+                # load matrices size and scale if they are set in the test
+                if "mat_size" in test: 
+                    args += [test["mat_size"][0], test["mat_size"][1]]
+                if "scale" in test: 
+                    args += [test["scale"]]
+                # if the file defines pyfhel params, use them 
+                if  "pyfhel_params" in test:
+                    args += [test["pyfhel_params"]]
+                # run the test
+                time = 0.0
+                runs = test["runs"]
+                logger.write(f'Using Args: {args} ')
+                for _ in tqdm(range(runs), desc=f'Running Test {cnt}: {test["type"]}'):
+                    args[0] = func(*args)
+                logger.write(f'Finished Running Test: {cnt}\n')
+                # log specifc results in a csv for further analysis 
+                args[0].to_csv(f'{test["type"]}_results.csv')
+                cnt += 1 
+    else:
+        print("Only file input is supported")
 
 
 if __name__ == "__main__":
