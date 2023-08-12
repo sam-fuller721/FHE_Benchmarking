@@ -52,6 +52,155 @@ def decrypt_AES_GCM(encryptedMsg, secretKey):
     return plaintext
 
 
+def run_mat_scalef(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+    run_results = []
+    a = np.random.random((n, m)) * mat_scale
+    run_results += [a.nbytes]
+    start = timer()
+    res = a * scale_multiplier
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [res.nbytes]
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+def run_mat_scalei(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
+    run_results = []
+    a = np.random.randint(mat_scale, size=(n, m))
+    run_results += [a.nbytes]
+    start = timer()
+    res = a * scale_multiplier
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [res.nbytes]
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+def run_mat_scalef_FHE(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(
+            columns=["Encryption_Time_Data", "Encryption_Size_Data", "Encode_Time_Scalar", "Encode_Size_Scalar",
+                     "Processing_Time", "Encryption_Size_Results", "Decryption_Results_Time", "Accuracy"])
+    run_results = []
+    HE = Pyfhel()
+    if params is not None:
+        ckks_params = params
+    else:
+        ckks_params = {
+            "scheme": "CKKS",
+            "n": 2 ** 14,
+            "scale": 2 ** 30,
+            "qi_sizes": [60, 30, 30, 30, 60]
+        }
+    a_mat = np.random.random((n, m)) * mat_scale
+    start = timer()
+    HE.contextGen(**ckks_params)
+    HE.keyGen()
+    HE.relinKeyGen()
+    HE.rotateKeyGen()
+    # encrypt matrix
+    a_enc = [HE.encryptFrac(np.array([elem])) for elem in a_mat.flatten("C")]
+    stop = timer()
+    # log time to encrypt matrix
+    run_results += [stop - start]
+    # log size of encrypted matrix
+    run_results += [get_encrypted_size(a_enc)]
+    start = timer()
+    scale_enc = HE.encodeFrac(np.array([scale_multiplier], dtype=np.float64))
+    stop = timer()
+    # log time to encode the scalar multiplier
+    run_results += [stop - start]
+    # log the size of the scalar multiplier
+    run_results += [scale_enc.__sizeof__()]
+    start = timer()
+    res = [elem * scale_enc for elem in a_enc]
+    stop = timer()
+    # log the time to scale the encrypted matrix
+    run_results += [stop - start]
+    # log the resulting size of the encrypted matrix
+    run_results += [get_encrypted_size(res)]
+    start = timer()
+    res_decrypted = []
+    for row in range(n):
+        temp = []
+        for col in range(m):
+            temp.append(HE.decryptFrac(res[row*m + col])[0])
+        res_decrypted.append(temp)
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [percent_error_matrix(a_mat * scale_multiplier, np.array(res_decrypted))]
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+def run_mat_scalei_FHE(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(
+            columns=["Encryption_Time_Data", "Encryption_Size_Data", "Encode_Time_Scalar", "Encode_Size_Scalar",
+                     "Processing_Time", "Encryption_Size_Results", "Decryption_Results_Time", "Accuracy"])
+    run_results = []
+    HE = Pyfhel()
+    if params is not None:
+        bfv_params = params
+    else:
+        bfv_params = {
+            'scheme': 'BFV',
+            'n': 2 ** 13,
+            't': 65537,
+            't_bits': 20,
+            'sec': 128,
+        }
+    a_mat = np.random.randint(mat_scale, size=(n, m))
+    start = timer()
+    HE.contextGen(**bfv_params)
+    HE.keyGen()
+    HE.rotateKeyGen()
+    HE.relinKeyGen()
+    # encrypt matrix
+    a_enc = [HE.encryptInt(np.array([elem])) for elem in a_mat.flatten("C")]
+    stop = timer()
+    # log time to encrypt matrix
+    run_results += [stop - start]
+    # log size of encrypted matrix
+    run_results += [get_encrypted_size(a_enc)]
+    start = timer()
+    scale_enc = HE.encodeInt(np.array([scale_multiplier], dtype=np.int64))
+    stop = timer()
+    # log time to encode the scalar multiplier
+    run_results += [stop - start]
+    # log the size of the scalar multiplier
+    run_results += [scale_enc.__sizeof__()]
+    start = timer()
+    res = [elem * scale_enc for elem in a_enc]
+    stop = timer()
+    # log the time to scale the encrypted matrix
+    run_results += [stop - start]
+    # log the resulting size of the encrypted matrix
+    run_results += [get_encrypted_size(res)]
+    start = timer()
+    res_decrypted = []
+    for row in range(n):
+        temp = []
+        for col in range(m):
+            temp.append(HE.decryptInt(res[row * m + col])[0])
+        res_decrypted.append(temp)
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [percent_error_matrix(a_mat * scale_multiplier, np.array(res_decrypted))]
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
 '''
     Standard Matrix Multiplication - Float
 '''
@@ -150,7 +299,7 @@ def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     AES Matrix Multiplication - Integer
 '''
 def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
-        # check if the results dataframe has been initialized yet 
+    # check if the results dataframe has been initialized yet
     if results_dataframe.empty: 
         results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results", "Accuracy"])
     run_results = []
@@ -509,16 +658,20 @@ def main(args):
     if not os.path.exists("test_results"):
         os.mkdir("test_results")
     # create dict for storing a mapping of test types to test functions 
-    test_functions  = {
-        "log_reg_float_FHE" : run_logistic_reg_fhe, 
-        "log_reg_float_AES" : run_logistic_reg_aes, 
-        "log_reg_float_NONE" : run_logistic_reg,
-        "mat_mul_float_FHE" : run_mat_mulf_fhe, 
-        "mat_mul_int_FHE" : run_mat_muli_fhe,
-        "mat_mul_float_AES" : run_mat_mulf_aes, 
-        "mat_mul_int_AES" : run_mat_muli_aes, 
-        "mat_mul_float_NONE" : run_mat_mulf, 
-        "mat_mul_int_NONE" :  run_mat_muli
+    test_functions = {
+        "log_reg_float_FHE": run_logistic_reg_fhe,
+        "log_reg_float_AES": run_logistic_reg_aes,
+        "log_reg_float_NONE": run_logistic_reg,
+        "mat_mul_float_FHE": run_mat_mulf_fhe,
+        "mat_mul_int_FHE": run_mat_muli_fhe,
+        "mat_mul_float_AES": run_mat_mulf_aes,
+        "mat_mul_int_AES": run_mat_muli_aes,
+        "mat_mul_float_NONE": run_mat_mulf,
+        "mat_mul_int_NONE":  run_mat_muli,
+        "mat_scale_float_NONE": run_mat_scalef,
+        "mat_scale_int_NONE": run_mat_scalei,
+        "mat_scale_float_FHE": run_mat_scalef_FHE,
+        "mat_scale_int_FHE": run_mat_scalei_FHE
     }
     # parse the test file JSON 
     if args.file_input:
@@ -538,8 +691,10 @@ def main(args):
                     args += [test["mat_size"][0], test["mat_size"][1]]
                 if "scale" in test: 
                     args += [test["scale"]]
+                if "scale_multiplier" in test:
+                    args += [test["scale_multiplier"]]
                 # if the file defines pyfhel params, use them 
-                if  "pyfhel_params" in test:
+                if "pyfhel_params" in test:
                     args += [test["pyfhel_params"]]
                 # run the test
                 time = 0.0
