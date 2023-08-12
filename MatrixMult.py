@@ -62,42 +62,43 @@ def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) ->
 
 
 def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
-    # check if the results dataframe has been initialized yet
-    if results_dataframe.empty:
-        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results", "Accuracy"])
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Encryption_Time", "Encryption_Size", "Decryption_Time"])
     run_results = []
 
     a = np.random.random((n, m)) * scale
     b = np.random.random((m, n)) * scale
-
-    # log size of both matrices
+    
+    # Size_Data: log size of both matrices
     run_results += [a.nbytes + b.nbytes]
 
+    # encrypting matrices, a and b
     start = timer()
     secretKey = get_secret_key()
-
-    # encrypting matrices, a and b
+    
     a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
     b_encrypt = encrypt_AES_GCM(b.tobytes(), secretKey)
+    
+    # Encryption_Time: log encryption time
+    stop = timer()
+    run_results += [stop - start]
+
+    # Encryption_Size: log size of encrypted matrices
+    run_results += [get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt)]
 
     # decrypting encrypted matrices
+    start = timer()
     a_decrypt = np.frombuffer(decrypt_AES_GCM(a_encrypt, secretKey))
-    a_decrypt.resize((a.shape))
+    a_decrypt.resize((a.shape)) 
     b_decrypt = np.frombuffer(decrypt_AES_GCM(b_encrypt, secretKey))
     b_decrypt.resize((b.shape))
 
     res = a_decrypt @ b_decrypt
+
+    # Decryption_Time: log decryption time
     stop = timer()
-
-    # log the processing time
     run_results += [stop - start]
-
-    # log the size of the resulting matrix
-    run_results += [
-        get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt) + a_decrypt.nbytes + b_decrypt.nbytes]
-
-    # log the percent error from the gold standard numpy matrix multiply
-    run_results += [percent_error_matrix(a @ b, res)]
 
     # append results of the current run to the results dataframe
     results_dataframe.loc[len(results_dataframe.index)] = run_results
@@ -111,42 +112,43 @@ def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
 
 
 def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) -> pd.DataFrame:
-    # check if the results dataframe has been initialized yet
-    if results_dataframe.empty:
-        results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results", "Accuracy"])
+    # check if the results dataframe has been initialized yet 
+    if results_dataframe.empty: 
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Encryption_Time", "Encryption_Size", "Decryption_Time"])
     run_results = []
 
     a = np.random.randint((n, m)) * scale
     b = np.random.randint((m, n)) * scale
-
-    # log size of both matrices
+    
+    # Size_Data: log size of both matrices
     run_results += [a.nbytes + b.nbytes]
 
+    # encrypting matrices, a and b
     start = timer()
     secretKey = get_secret_key()
-
-    # encrypting matrices, a and b
+    
     a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
     b_encrypt = encrypt_AES_GCM(b.tobytes(), secretKey)
+    
+    # Encryption_Time: log encryption time
+    stop = timer()
+    run_results += [stop - start]
+
+    # Encryption_Size: log size of encrypted matrices
+    run_results += [get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt)]
 
     # decrypting encrypted matrices
+    start = timer()
     a_decrypt = np.frombuffer(decrypt_AES_GCM(a_encrypt, secretKey), dtype=int)
-    a_decrypt.resize((a.shape))
+    a_decrypt.resize((a.shape)) 
     b_decrypt = np.frombuffer(decrypt_AES_GCM(b_encrypt, secretKey), dtype=int)
     b_decrypt.resize((b.shape))
 
     res = a_decrypt @ b_decrypt
+
+    # Decryption_Time: log decryption time
     stop = timer()
-
-    # log the processing time
     run_results += [stop - start]
-
-    # log the size of the resulting matrix
-    run_results += [
-        get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt) + a_decrypt.nbytes + b_decrypt.nbytes]
-
-    # log the percent error from the gold standard numpy matrix multiply
-    run_results += [percent_error_matrix(a @ b, res)]
 
     # append results of the current run to the results dataframe
     results_dataframe.loc[len(results_dataframe.index)] = run_results
