@@ -1,0 +1,17 @@
+{
+    "out_file" : "test_output.txt",
+    "tests" : [
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 10,
+            "scale" : 10,
+            "repetitions": 4
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 10,
+            "scale" : 10,
+            "repetitions" : 4
+        }
+    ]
+}

@@ -517,3 +517,112 @@ def run_scalar_divi_FHE(results_dataframe: pd.DataFrame, scale: int, params=None
 
     results_dataframe.loc[len(results_dataframe.index)] = run_results
     return results_dataframe
+
+
+'''
+Special test case, repeated multiplications in a row 
+'''
+
+
+def run_repeated_multf_FHE_relin(results_dataframe: pd.DataFrame, scale: int, repetitions: int, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(
+            columns=["Encryption_Time_Data", "Encryption_Size_Data", "Processing_Time", "Encryption_Size_Results",
+                     "Decryption_Results_Time", "Accuracy"])
+    run_results = []
+    HE = Pyfhel()
+    if params is not None:
+        ckks_params = params
+    else:
+        ckks_params = {
+            "scheme": "CKKS",
+            "n": 2 ** 14,
+            "scale": 2 ** 30,
+            "qi_sizes": [60] + [30]*repetitions + [60]
+        }
+    a = np.random.random(1) * scale
+    b = np.random.random(1) * scale
+    start = timer()
+    HE.contextGen(**ckks_params)
+    HE.keyGen()
+    HE.rotateKeyGen()
+    HE.relinKeyGen()
+    # encrypt vals
+    a_enc = HE.encryptFrac(a)
+    b_enc = HE.encryptFrac(b)
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [a_enc.__sizeof__() + b_enc.__sizeof__()]
+    start = timer()
+    res_enc = a_enc
+    for _ in range(repetitions):
+        res_enc *= b_enc
+        ~res_enc
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [res_enc.__sizeof__()]
+    start = timer()
+    res = HE.decryptFrac(res_enc)[0]
+    stop = timer()
+    run_results += [stop - start]
+    true_res = a
+    for _ in range(repetitions):
+        true_res *= b
+    run_results += [percent_error_matrix(true_res, res)]
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+'''
+No relinearization
+'''
+
+
+def run_repeated_multf_FHE_norelin(results_dataframe: pd.DataFrame, scale: int, repetitions: int, params=None) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(
+            columns=["Encryption_Time_Data", "Encryption_Size_Data", "Processing_Time", "Encryption_Size_Results",
+                     "Decryption_Results_Time", "Accuracy"])
+    run_results = []
+    HE = Pyfhel()
+    if params is not None:
+        ckks_params = params
+    else:
+        ckks_params = {
+            "scheme": "CKKS",
+            "n": 2 ** 14,
+            "scale": 2 ** 30,
+            "qi_sizes": [60] + [30]*repetitions + [60]
+        }
+    a = np.random.random(1) * scale
+    b = np.random.random(1) * scale
+    start = timer()
+    HE.contextGen(**ckks_params)
+    HE.keyGen()
+    HE.rotateKeyGen()
+    # encrypt vals
+    a_enc = HE.encryptFrac(a)
+    b_enc = HE.encryptFrac(b)
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [a_enc.__sizeof__() + b_enc.__sizeof__()]
+    start = timer()
+    res_enc = a_enc
+    for _ in range(repetitions):
+        res_enc *= b_enc
+    stop = timer()
+    run_results += [stop - start]
+    run_results += [res_enc.__sizeof__()]
+    start = timer()
+    res = HE.decryptFrac(res_enc)[0]
+    stop = timer()
+    run_results += [stop - start]
+    true_res = a
+    for _ in range(repetitions):
+        true_res *= b
+    run_results += [percent_error_matrix(true_res, res)]
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+

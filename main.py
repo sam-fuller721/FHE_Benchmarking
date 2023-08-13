@@ -44,7 +44,9 @@ def main(args):
         "scalar_multf_FHE": run_scalar_multf_FHE,
         "scalar_multi_FHE": run_scalar_multi_FHE,
         "scalar_divf_FHE": run_scalar_divf_FHE,
-        "scalar_divi_FHE": run_scalar_divi_FHE
+        "scalar_divi_FHE": run_scalar_divi_FHE,
+        "repeated_multf_FHE_relin": run_repeated_multf_FHE_relin,
+        "repeated_multf_FHE_norelin": run_repeated_multf_FHE_norelin
     }
     # parse the test file JSON 
     if args.file_input:
@@ -66,6 +68,8 @@ def main(args):
                     args += [test["scale"]]
                 if "scale_multiplier" in test:
                     args += [test["scale_multiplier"]]
+                if "repetitions" in test:
+                    args += [test["repetitions"]]
                 # if the file defines pyfhel params, use them 
                 if "pyfhel_params" in test:
                     args += [test["pyfhel_params"]]
