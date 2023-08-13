@@ -24,6 +24,8 @@ def main(args):
         "mat_mul_int_NONE":  run_mat_muli,
         "mat_scale_float_NONE": run_mat_scalef,
         "mat_scale_int_NONE": run_mat_scalei,
+        "mat_scale_float_AES": run_mat_scalef_AES,
+        "mat_scale_int_AES": run_mat_scalei_AES,
         "mat_scale_float_FHE": run_mat_scalef_FHE,
         "mat_scale_int_FHE": run_mat_scalei_FHE
     }

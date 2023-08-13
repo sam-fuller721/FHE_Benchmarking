@@ -37,6 +37,78 @@ def run_mat_scalei(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: i
     return results_dataframe
 
 
+def run_mat_scalef_AES(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Encryption_Time", "Encryption_Size", "Decryption_Time"])
+    run_results = []
+
+    # Size_Data: log size of matrix a
+    a = np.random.randint(mat_scale, size=(n, m))
+    run_results += [a.nbytes]
+
+    # encrypting matrix a
+    start = timer()
+    secretKey = get_secret_key()
+    a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
+    
+    # Encryption_Time: log encryption time
+    stop = timer()
+    run_results += [stop - start]
+
+    # Encryption_Size: log encryption size
+    run_results += [get_encrypted_size_mat(a_encrypt)]
+
+    # decrypt matrix a
+    start = timer()
+    a_decrypt = np.frombuffer(decrypt_AES_GCM(a_encrypt, secretKey))
+    a_decrypt.resize((a.shape))
+
+    # Decryption_Time: log decryption time
+    stop = timer()
+    run_results += [stop - start]
+
+    res = a_decrypt * scale_multiplier
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
+def run_mat_scalei_AES(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int) -> pd.DataFrame:
+    # check if the results dataframe has been initialized yet
+    if results_dataframe.empty:
+        results_dataframe = pd.DataFrame(columns=["Size_Data", "Encryption_Time", "Encryption_Size", "Decryption_Time"])
+    run_results = []
+
+    # Size_Data: log size of matrix a
+    a = np.random.randint(mat_scale, size=(n, m))
+    run_results += [a.nbytes]
+
+    # encrypting matrix a
+    start = timer()
+    secretKey = get_secret_key()
+    a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
+    
+    # Encryption_Time: log encryption time
+    stop = timer()
+    run_results += [stop - start]
+
+    # Encryption_Size: log encryption size
+    run_results += [get_encrypted_size_mat(a_encrypt)]
+
+    # decrypt matrix a
+    start = timer()
+    a_decrypt = np.frombuffer(decrypt_AES_GCM(a_encrypt, secretKey), dtype=int)
+    a_decrypt.resize((a.shape))
+
+    # Decryption_Time: log decryption time
+    stop = timer()
+    run_results += [stop - start]
+
+    res = a_decrypt * scale_multiplier
+    results_dataframe.loc[len(results_dataframe.index)] = run_results
+    return results_dataframe
+
+
 def run_mat_scalef_FHE(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: int, scale_multiplier: int, params=None) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet
     if results_dataframe.empty:
