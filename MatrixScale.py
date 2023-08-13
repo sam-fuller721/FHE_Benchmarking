@@ -57,7 +57,7 @@ def run_mat_scalef_AES(results_dataframe: pd.DataFrame, n: int, m: int, mat_scal
     run_results += [stop - start]
 
     # Encryption_Size: log encryption size
-    run_results += [get_encrypted_size_mat(a_encrypt)]
+    run_results += [a_encrypt[0].__sizeof__()]
 
     # decrypt matrix a
     start = timer()
@@ -93,7 +93,7 @@ def run_mat_scalei_AES(results_dataframe: pd.DataFrame, n: int, m: int, mat_scal
     run_results += [stop - start]
 
     # Encryption_Size: log encryption size
-    run_results += [get_encrypted_size_mat(a_encrypt)]
+    run_results += [a_encrypt[0].__sizeof__()]
 
     # decrypt matrix a
     start = timer()

@@ -79,13 +79,13 @@ def run_mat_mulf_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     
     a_encrypt = encrypt_AES_GCM(a.tobytes(), secretKey)
     b_encrypt = encrypt_AES_GCM(b.tobytes(), secretKey)
-    
+
     # Encryption_Time: log encryption time
     stop = timer()
     run_results += [stop - start]
 
     # Encryption_Size: log size of encrypted matrices
-    run_results += [get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt)]
+    run_results += [a_encrypt[0].__sizeof__() + b_encrypt[0].__sizeof__()]
 
     # decrypting encrypted matrices
     start = timer()
@@ -135,7 +135,7 @@ def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     run_results += [stop - start]
 
     # Encryption_Size: log size of encrypted matrices
-    run_results += [get_encrypted_size_mat(a_encrypt) + get_encrypted_size_mat(b_encrypt)]
+    run_results += [a_encrypt[0].__sizeof__() + b_encrypt[0].__sizeof__()]
 
     # decrypting encrypted matrices
     start = timer()
@@ -205,7 +205,7 @@ def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     # log processing time
     run_results += [stop - start]
     # log size of resulting matrix
-    run_results += [get_encrypted_size_mat(res)]
+    run_results += [get_encrypted_size_elementwise(res)]
     # decrypt matrix
     res_decrypt = []
     start = timer()
@@ -275,7 +275,7 @@ def run_mat_mulf_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     # log processing time
     run_results += [stop - start]
     # log size of resulting matrix
-    run_results += [get_encrypted_size_mat(res)]
+    run_results += [get_encrypted_size_elementwise(res)]
     # decrypt the matrix
     res_decrypt = []
     start = timer()

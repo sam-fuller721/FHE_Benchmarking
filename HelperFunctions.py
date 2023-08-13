@@ -10,7 +10,7 @@ def get_encrypted_size(encrypted_data) -> int:
     return sum
 
 
-def get_encrypted_size_mat(encrypted_data) -> int:
+def get_encrypted_size_elementwise(encrypted_data) -> int:
     sum = 0
     for row in encrypted_data:
         sum += get_encrypted_size(row)
@@ -19,7 +19,9 @@ def get_encrypted_size_mat(encrypted_data) -> int:
 
 def percent_error_matrix(mat_ref, mat_calculated) -> float:
     mat_diff = mat_ref - mat_calculated
-    return np.average(mat_diff)
+    mat_error = (mat_diff / mat_ref) * 100
+    return np.average(mat_error)
+
 
 
 '''

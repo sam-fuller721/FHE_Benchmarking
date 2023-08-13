@@ -32,7 +32,7 @@ def run_logistic_reg(results_dataframe: pd.DataFrame) -> pd.DataFrame:
     lin_reg = LogisticRegression()
     lin_reg.fit(data_train, target_train)
     # log the size of the trained coefficients
-    run_results += [lin_reg.coef_.nbytes]
+    run_results += [lin_reg.coef_.nbytes + lin_reg.intercept_.nbytes]
     # run inference
     start = timer()
     y_pred = lin_reg.predict(data_test)
@@ -57,7 +57,8 @@ def run_logistic_reg_aes(results_dataframe: pd.DataFrame) -> pd.DataFrame:
     # check if the results dataframe has been initialized yet
     if results_dataframe.empty:
         results_dataframe = pd.DataFrame(
-            columns=["Size_Data", "Size_Coefficients", "Inference_Time", "Prediction_Size", "Accuracy"])
+            columns=["Size_Data", "Size_Coefficients", "Encryption_Time_Data", "Encryption_Size_Data",
+                     "Decryption_Time_Data", "Inference_Time", "Prediction_Size", "Accuracy"])
     run_results = []
 
     data, target = datasets.load_iris(return_X_y=True)
@@ -71,43 +72,38 @@ def run_logistic_reg_aes(results_dataframe: pd.DataFrame) -> pd.DataFrame:
     data_train = scaler.transform(data_train)
     data_test = scaler.transform(data_test)
     lin_reg = LogisticRegression()
-    secretKey = get_secret_key()
+    lin_reg.fit(data_train, target_train)
+    run_results += [lin_reg.coef_.nbytes + lin_reg.intercept_.nbytes]
 
-    # run inference
     start = timer()
-
-    # encrypt test data, train data, target train
+    secretKey = get_secret_key()
+    # encrypt test data
     encrypted_test_data = encrypt_AES_GCM(data_test.tobytes(), secretKey)
+    stop = timer()
+    # log time to encrypt test data
+    run_results += [stop - start]
+    # log size of encrypted data
+    run_results += [encrypted_test_data[0].__sizeof__()]
+
+    # decrypt test data
+    start = timer()
     decrypted_test_data = np.frombuffer(decrypt_AES_GCM(encrypted_test_data, secretKey))
+    stop = timer()
+    # log time to decrypt test data
+    run_results += [stop - start]
     decrypted_test_data.resize((data_test.shape))
-
-    encrypted_train_data = encrypt_AES_GCM(data_train.tobytes(), secretKey)
-    decrypted_train_data = np.frombuffer(decrypt_AES_GCM(encrypted_train_data, secretKey))
-    decrypted_train_data.resize((data_train.shape))
-
-    encrypted_target_train = encrypt_AES_GCM(target_train.tobytes(), secretKey)
-    decrypted_target_train = np.frombuffer(decrypt_AES_GCM(encrypted_target_train, secretKey), dtype=int)
-    decrypted_target_train.resize((target_train.shape))
-
-    lin_reg.fit(decrypted_train_data, decrypted_target_train)
-
-    # log the size of the trained coefficients
-    run_results += [lin_reg.coef_.nbytes]
-
+    # run inferencing
+    start = timer()
     y_pred = lin_reg.predict(decrypted_test_data)
     stop = timer()
-
     # log the inferencing time
     run_results += [stop - start]
-
     # log the prediction size
     run_results += [y_pred.nbytes]
-
     # log the accuracy
     run_results += [metrics.accuracy_score(target_test, y_pred)]
     # append results of the current run to the results dataframe
     results_dataframe.loc[len(results_dataframe.index)] = run_results
-
     return results_dataframe
 
 
