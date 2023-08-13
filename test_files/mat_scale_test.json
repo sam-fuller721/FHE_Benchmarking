@@ -29,6 +29,20 @@
             "scale_multiplier": 10
         },
         {
+            "type" : "mat_scale_int_AES",
+            "runs" : 10,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 10
+        },
+        {
+            "type" : "mat_scale_float_AES",
+            "runs" : 10,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 10
+        },
+        {
             "type" : "mat_scale_int_NONE",
             "runs" : 10,
             "scale" : 10,
