@@ -26,7 +26,7 @@ def run_mat_scalei(results_dataframe: pd.DataFrame, n: int, m: int, mat_scale: i
     if results_dataframe.empty:
         results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
     run_results = []
-    a = np.random.randint(mat_scale, size=(n, m))
+    a = np.random.randint(1, mat_scale, size=(n, m))
     run_results += [a.nbytes]
     start = timer()
     res = a * scale_multiplier
@@ -80,7 +80,7 @@ def run_mat_scalei_AES(results_dataframe: pd.DataFrame, n: int, m: int, mat_scal
     run_results = []
 
     # Size_Data: log size of matrix a
-    a = np.random.randint(mat_scale, size=(n, m))
+    a = np.random.randint(1, mat_scale, size=(n, m))
     run_results += [a.nbytes]
 
     # encrypting matrix a
@@ -185,7 +185,7 @@ def run_mat_scalei_FHE(results_dataframe: pd.DataFrame, n: int, m: int, mat_scal
             't_bits': 20,
             'sec': 128,
         }
-    a_mat = np.random.randint(mat_scale, size=(n, m))
+    a_mat = np.random.randint(1, mat_scale, size=(n, m))
     start = timer()
     HE.contextGen(**bfv_params)
     HE.keyGen()

@@ -40,8 +40,8 @@ def run_mat_muli(results_dataframe: pd.DataFrame, n: int, m: int, scale: int) ->
     if results_dataframe.empty:
         results_dataframe = pd.DataFrame(columns=["Size_Data", "Processing_Time", "Size_Results"])
     run_results = []
-    a = np.random.randint(scale, size=(n, m))
-    b = np.random.randint(scale, size=(m, n))
+    a = np.random.randint(1, scale, size=(n, m))
+    b = np.random.randint(1, scale, size=(m, n))
     # log size of both matrices
     run_results += [a.nbytes + b.nbytes]
     start = timer()
@@ -117,8 +117,8 @@ def run_mat_muli_aes(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
         results_dataframe = pd.DataFrame(columns=["Size_Data", "Encryption_Time", "Encryption_Size", "Decryption_Time"])
     run_results = []
 
-    a = np.random.randint((n, m)) * scale
-    b = np.random.randint((m, n)) * scale
+    a = np.random.randint(1, scale, size=(n, m))
+    b = np.random.randint(1, scale, size=(m, n))
     
     # Size_Data: log size of both matrices
     run_results += [a.nbytes + b.nbytes]
@@ -184,8 +184,8 @@ def run_mat_muli_fhe(results_dataframe: pd.DataFrame, n: int, m: int, scale: int
     HE.keyGen()
     HE.rotateKeyGen()
     HE.relinKeyGen()
-    a_mat = np.random.randint(scale, size=(n, m))
-    b_mat = np.random.randint(scale, size=(m, n))
+    a_mat = np.random.randint(1, scale, size=(n, m))
+    b_mat = np.random.randint(1, scale, size=(m, n))
     a_enc = [HE.encryptInt(np.array(row)) for row in a_mat]
     b_enc = [HE.encryptInt(np.array(col)) for col in b_mat.T]
     stop = timer()

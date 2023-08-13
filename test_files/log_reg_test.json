@@ -9,15 +9,15 @@
                 "scale": 1073741824,
                 "qi_sizes": [60, 30, 30, 30, 60]
             },
-            "runs" : 10
+            "runs" : 100
         }, 
         {
             "type" : "log_reg_float_AES",
-            "runs" : 10
+            "runs" : 100
         },
         {
             "type" : "log_reg_float_NONE",
-            "runs" : 10
+            "runs" : 100
         }
     ]
 }

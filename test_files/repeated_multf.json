@@ -3,15 +3,15 @@
     "tests" : [
         {
             "type" : "repeated_multf_FHE_relin",
-            "runs" : 10,
+            "runs" : 100,
             "scale" : 10,
-            "repetitions": 4
+            "repetitions": 10
         },
         {
             "type" : "repeated_multf_FHE_norelin",
-            "runs" : 10,
+            "runs" : 100,
             "scale" : 10,
-            "repetitions" : 4
+            "repetitions" : 10
         }
     ]
 }

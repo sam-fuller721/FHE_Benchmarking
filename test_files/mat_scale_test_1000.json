@@ -1,0 +1,60 @@
+{
+    "out_file" : "test_output.txt",
+    "tests" : [
+        {
+            "type" : "mat_scale_float_FHE",
+            "pyfhel_params": {
+                "scheme": "CKKS",
+                "n": 16384,
+                "scale": 1073741824,
+                "qi_sizes": [60, 30, 30, 30, 60]
+            },
+            "runs" : 100,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 1000
+        },
+        {
+            "type" : "mat_scale_int_FHE",
+            "pyfhel_params" : {
+                "scheme": "BFV",
+                "n": 8192,
+                "t": 65537,
+                "t_bits": 20,
+                "sec": 128
+            },
+            "runs" : 100,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 1000
+        },
+        {
+            "type" : "mat_scale_int_AES",
+            "runs" : 100,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 1000
+        },
+        {
+            "type" : "mat_scale_float_AES",
+            "runs" : 100,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 1000
+        },
+        {
+            "type" : "mat_scale_int_NONE",
+            "runs" : 100,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 1000
+        },
+        {
+            "type" : "mat_scale_float_NONE",
+            "runs" : 100,
+            "scale" : 10,
+            "mat_size" : [5, 5],
+            "scale_multiplier": 1000
+        }
+    ]
+}

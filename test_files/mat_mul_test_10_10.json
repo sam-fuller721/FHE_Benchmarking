@@ -11,7 +11,7 @@
             },
             "runs" : 10, 
             "scale" : 10, 
-            "mat_size" : [5, 5]
+            "mat_size" : [10, 10]
         },
         {
             "type" : "mat_mul_int_FHE",
@@ -22,33 +22,33 @@
                 "t_bits": 20,
                 "sec": 128
             },
-            "runs" : 10, 
+            "runs" : 100,
             "scale" : 10, 
-            "mat_size" : [5, 5]
+            "mat_size" : [10, 10]
         },
         {
             "type" : "mat_mul_int_AES",
-            "runs" : 10, 
+            "runs" : 100,
             "scale" : 10, 
-            "mat_size" : [5, 5]
+            "mat_size" : [10, 10]
         },
         {
             "type" : "mat_mul_float_AES",
-            "runs" : 10, 
+            "runs" : 100,
             "scale" : 10, 
-            "mat_size" : [5, 5]
+            "mat_size" : [10, 10]
         },
         {
             "type" : "mat_mul_int_NONE",
-            "runs" : 10, 
+            "runs" : 100,
             "scale" : 10, 
-            "mat_size" : [5, 5]
+            "mat_size" : [10, 10]
         },
         {
             "type" : "mat_mul_float_NONE",
-            "runs" : 10, 
+            "runs" : 100,
             "scale" : 10, 
-            "mat_size" : [5, 5]
+            "mat_size" : [10, 10]
         }
     ]
 }
