@@ -6,6 +6,7 @@ from tqdm import tqdm
 from LogisticRegression import *
 from MatrixMult import *
 from MatrixScale import *
+from BasicOperators import *
 
 
 def main(args):
