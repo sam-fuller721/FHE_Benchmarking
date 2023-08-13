@@ -77,7 +77,7 @@ def main(args):
                     args[0] = func(*args)
                 logger.write(f'Finished Running Test: {cnt}\n')
                 # log specifc results in a csv for further analysis 
-                args[0].to_csv(f'{test_file_path}/{test["type"]}_results.csv')
+                args[0].to_csv(f'{test_file_path}/{test["type"]}_results_run{cnt}.csv')
                 cnt += 1 
     else:
         print("Only file input is supported")
