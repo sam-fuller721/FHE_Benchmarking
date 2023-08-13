@@ -27,7 +27,23 @@ def main(args):
         "mat_scale_float_AES": run_mat_scalef_AES,
         "mat_scale_int_AES": run_mat_scalei_AES,
         "mat_scale_float_FHE": run_mat_scalef_FHE,
-        "mat_scale_int_FHE": run_mat_scalei_FHE
+        "mat_scale_int_FHE": run_mat_scalei_FHE,
+        "scalar_addf": run_scalar_addf,
+        "scalar_addi": run_scalar_addi,
+        "scalar_subf": run_scalar_subf,
+        "scalar_subi": run_scalar_subi,
+        "scalar_multf": run_scalar_multf,
+        "scalar_multi": run_scalar_multi,
+        "scalar_divf": run_scalar_divf,
+        "scalar_divi": run_scalar_divi,
+        "scalar_addf_FHE": run_scalar_addf_FHE,
+        "scalar_addi_FHE": run_scalar_addi_FHE,
+        "scalar_subf_FHE": run_scalar_subf_FHE,
+        "scalar_subi_FHE": run_scalar_subi_FHE,
+        "scalar_multf_FHE": run_scalar_multf_FHE,
+        "scalar_multi_FHE": run_scalar_multi_FHE,
+        "scalar_divf_FHE": run_scalar_divf_FHE,
+        "scalar_divi_FHE": run_scalar_divi_FHE
     }
     # parse the test file JSON 
     if args.file_input:

@@ -1,0 +1,85 @@
+{
+    "out_file" : "test_output.txt",
+    "tests" : [
+        {
+            "type" : "scalar_addf_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_subf_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_multf_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_divf_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_addi_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_subi_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_multi_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_divi_FHE",
+            "runs" : 10,
+            "scale" : 10
+        },
+                {
+            "type" : "scalar_addf",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_subf",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_multf",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_divf",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_addi",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_subi",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_multi",
+            "runs" : 10,
+            "scale" : 10
+        },
+        {
+            "type" : "scalar_divi",
+            "runs" : 10,
+            "scale" : 10
+        }
+    ]
+}
