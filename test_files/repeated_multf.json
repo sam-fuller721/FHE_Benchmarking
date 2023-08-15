@@ -4,13 +4,121 @@
         {
             "type" : "repeated_multf_FHE_relin",
             "runs" : 100,
-            "scale" : 10,
+            "scale" : 100,
+            "repetitions": 1
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 1
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 2
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 2
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 3
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 3
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 4
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 4
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 5
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 5
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 6
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 6
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 7
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 7
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 8
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 8
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions": 9
+        },
+        {
+            "type" : "repeated_multf_FHE_norelin",
+            "runs" : 100,
+            "scale" : 100,
+            "repetitions" : 9
+        },
+        {
+            "type" : "repeated_multf_FHE_relin",
+            "runs" : 100,
+            "scale" : 100,
             "repetitions": 10
         },
         {
             "type" : "repeated_multf_FHE_norelin",
             "runs" : 100,
-            "scale" : 10,
+            "scale" : 100,
             "repetitions" : 10
         }
     ]
