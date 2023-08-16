@@ -81,7 +81,10 @@ def main(args):
                     args[0] = func(*args)
                 logger.write(f'Finished Running Test: {cnt}\n')
                 # log specifc results in a csv for further analysis 
-                args[0].to_csv(f'{test_file_path}/{test["type"]}_results_run{cnt}.csv')
+                if "repetitions" in test:
+                    args[0].to_csv(f'{test_file_path}/{test["type"]}_{test["repetitions"]}reps_results_run{cnt}.csv')
+                else:
+                    args[0].to_csv(f'{test_file_path}/{test["type"]}_results_run{cnt}.csv')
                 cnt += 1 
     else:
         print("Only file input is supported")
